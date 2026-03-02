@@ -73,7 +73,7 @@ setInterval(() => {
     }
 }, 30_000);
 
-let phoneNumber = global.PAIRING_NUMBER || process.env.PAIRING_NUMBER || "2348069675806";
+let phoneNumber = global.PAIRING_NUMBER || process.env.PAIRING_NUMBER || "923051391005";
 let owner = JSON.parse(fs.readFileSync('./data/owner.json'));
 
 global.botname = process.env.BOT_NAME || "GAAJU-MD";
@@ -200,7 +200,7 @@ server.listen(PORT, () => {
     printLog('success', `Server listening on port ${PORT}`);
 });
 
-async function startQasimDev() {
+async function startChrisDev() {
     try {
         let { version, isLatest } = await fetchLatestBaileysVersion();
         
@@ -220,7 +220,7 @@ async function startQasimDev() {
             printLog('info', '👻 STEALTH MODE IS ACTIVE - Starting in stealth mode');
         }
 
-        const QasimDev = makeWASocket({
+        const ChrisDev = makeWASocket({
             version,
             logger: pino({ level: 'silent' }),
             printQRInTerminal: !pairingCode,
@@ -243,12 +243,12 @@ async function startQasimDev() {
             keepAliveIntervalMs: 10000,
         });
 
-        const originalSendPresenceUpdate = QasimDev.sendPresenceUpdate;
-        const originalReadMessages = QasimDev.readMessages;
-        const originalSendReceipt = QasimDev.sendReceipt;
-        const originalSendReadReceipt = QasimDev.sendReadReceipt;
+        const originalSendPresenceUpdate = ChrisDev.sendPresenceUpdate;
+        const originalReadMessages = ChrisDev.readMessages;
+        const originalSendReceipt = ChrisDev.sendReceipt;
+        const originalSendReadReceipt = ChrisDev.sendReadReceipt;
         
-        QasimDev.sendPresenceUpdate = async function(...args) {
+        ChrisDev.sendPresenceUpdate = async function(...args) {
             const ghostMode = await store.getSetting('global', 'stealthMode');
             if (ghostMode && ghostMode.enabled) {
                 printLog('info', '👻 Blocked presence update (stealth mode)');
@@ -257,7 +257,7 @@ async function startQasimDev() {
             return originalSendPresenceUpdate.apply(this, args);
         };
         
-        QasimDev.readMessages = async function(...args) {
+        ChrisDev.readMessages = async function(...args) {
             const ghostMode = await store.getSetting('global', 'stealthMode');
             if (ghostMode && ghostMode.enabled) {
                 return;
@@ -266,7 +266,7 @@ async function startQasimDev() {
         };
 
         if (originalSendReceipt) {
-            QasimDev.sendReceipt = async function(...args) {
+            ChrisDev.sendReceipt = async function(...args) {
                 const ghostMode = await store.getSetting('global', 'stealthMode');
                 if (ghostMode && ghostMode.enabled) {
                     return;
@@ -276,7 +276,7 @@ async function startQasimDev() {
         }
         
         if (originalSendReadReceipt) {
-            QasimDev.sendReadReceipt = async function(...args) {
+            QaDev.sendReadReceipt = async function(...args) {
                 const ghostMode = await store.getSetting('global', 'stealthMode');
                 if (ghostMode && ghostMode.enabled) {
                     return;
@@ -285,8 +285,8 @@ async function startQasimDev() {
             };
         }
         
-        const originalQuery = QasimDev.query;
-        QasimDev.query = async function(node, ...args) {
+        const originalQuery = ChrisDev.query;
+        ChrisDev.query = async function(node, ...args) {
             const ghostMode = await store.getSetting('global', 'stealthMode');
             if (ghostMode && ghostMode.enabled) {
                 if (node && node.tag === 'receipt') {
@@ -299,15 +299,15 @@ async function startQasimDev() {
             return originalQuery.apply(this, [node, ...args]);
         };
         
-        QasimDev.isGhostMode = async () => {
+        ChrisDev.isGhostMode = async () => {
             const ghostMode = await store.getSetting('global', 'stealthMode');
             return ghostMode && ghostMode.enabled;
         };
 
-        QasimDev.ev.on('creds.update', saveCreds);
-        store.bind(QasimDev.ev);
+        ChrisDev.ev.on('creds.update', saveCreds);
+        store.bind(ChrisDev.ev);
         
-        QasimDev.ev.on('messages.upsert', async (chatUpdate) => {
+        ChrisDev.ev.on('messages.upsert', async (chatUpdate) => {
             try {
                 const mek = chatUpdate.messages[0];
                 if (!mek.message) return;
@@ -317,27 +317,27 @@ async function startQasimDev() {
                     : mek.message;
 
                 if (mek.key && mek.key.remoteJid === 'status@broadcast') {
-                    await handleStatus(QasimDev, chatUpdate);
+                    await handleStatus(ChrisDev, chatUpdate);
                     return;
                 }
 
-                if (!QasimDev.public && !mek.key.fromMe && chatUpdate.type === 'notify') {
+                if (!ChrisDev.public && !mek.key.fromMe && chatUpdate.type === 'notify') {
                     const isGroup = mek.key?.remoteJid?.endsWith('@g.us');
                     if (!isGroup) return;
                 }
 
                 if (mek.key.id.startsWith('BAE5') && mek.key.id.length === 16) return;
 
-                if (QasimDev?.msgRetryCounterCache) {
-                    QasimDev.msgRetryCounterCache.clear();
+                if (ChrisDev?.msgRetryCounterCache) {
+                    ChrisDev.msgRetryCounterCache.clear();
                 }
 
                 try {
-                    await handleMessages(QasimDev, chatUpdate);
+                    await handleMessages(ChrisDev, chatUpdate);
                 } catch (err) {
                     printLog('error', `Error in handleMessages: ${err.message}`);
                     if (mek.key && mek.key.remoteJid) {
-                        await QasimDev.sendMessage(mek.key.remoteJid, {
+                        await ChrisDev.sendMessage(mek.key.remoteJid, {
                             text: '❌ An error occurred while processing your message.',
                             contextInfo: {
                                 forwardingScore: 1,
@@ -356,7 +356,7 @@ async function startQasimDev() {
             }
         });
 
-        QasimDev.decodeJid = (jid) => {
+        ChrisDev.decodeJid = (jid) => {
             if (!jid) return jid;
             if (/:\d+@/gi.test(jid)) {
                 let decode = jidDecode(jid) || {};
@@ -364,33 +364,33 @@ async function startQasimDev() {
             } else return jid;
         };
 
-        QasimDev.ev.on('contacts.update', update => {
+        ChrisDev.ev.on('contacts.update', update => {
             for (let contact of update) {
-                let id = QasimDev.decodeJid(contact.id);
+                let id = ChrisDev.decodeJid(contact.id);
                 if (store && store.contacts) store.contacts[id] = { id, name: contact.notify };
             }
         });
 
-        QasimDev.getName = (jid, withoutContact = false) => {
-            id = QasimDev.decodeJid(jid);
-            withoutContact = QasimDev.withoutContact || withoutContact;
+        ChrisDev.getName = (jid, withoutContact = false) => {
+            id = ChrisDev.decodeJid(jid);
+            withoutContact = ChrisDev.withoutContact || withoutContact;
             let v;
             if (id.endsWith("@g.us")) return new Promise(async (resolve) => {
                 v = store.contacts[id] || {};
-                if (!(v.name || v.subject)) v = QasimDev.groupMetadata(id) || {};
+                if (!(v.name || v.subject)) v = ChrisDev.groupMetadata(id) || {};
                 resolve(v.name || v.subject || PhoneNumber('+' + id.replace('@s.whatsapp.net', '')).getNumber('international'));
             });
             else v = id === '0@s.whatsapp.net' ? {
                 id,
                 name: 'WhatsApp'
-            } : id === QasimDev.decodeJid(QasimDev.user.id) ?
-                QasimDev.user :
+            } : id === ChrisDev.decodeJid(ChrisDev.user.id) ?
+                ChrisDev.user :
                 (store.contacts[id] || {});
             return (withoutContact ? '' : v.name) || v.subject || v.verifiedName || PhoneNumber('+' + jid.replace('@s.whatsapp.net', '')).getNumber('international');
         };
 
-        QasimDev.public = true;
-        QasimDev.serializeM = (m) => smsg(QasimDev, m, store);
+        ChrisDev.public = true;
+        ChrisDev.serializeM = (m) => smsg(ChrisDev, m, store);
 
         const isRegistered = state.creds?.registered === true;
         
@@ -406,7 +406,7 @@ async function startQasimDev() {
                 phoneNumberInput = process.env.PAIRING_NUMBER;
                 printLog('info', `Using phone number from environment: ${phoneNumberInput}`);
             } else if (rl && !rl.closed) {
-                phoneNumberInput = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFormat: 234806967xxxx (without + or spaces) : `)));
+                phoneNumberInput = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFormat: 6281376552730 (without + or spaces) : `)));
             } else {
                 phoneNumberInput = phoneNumber;
                 printLog('info', `Using default phone number: ${phoneNumberInput}`);
@@ -426,7 +426,7 @@ async function startQasimDev() {
 
             setTimeout(async () => {
                 try {
-                    let code = await QasimDev.requestPairingCode(phoneNumberInput);
+                    let code = await ChrisDev.requestPairingCode(phoneNumberInput);
                     code = code?.match(/.{1,4}/g)?.join("-") || code;
                     console.log(chalk.black(chalk.bgGreen(`Your Pairing Code : `)), chalk.black(chalk.white(code)));
                     printLog('success', `Pairing code generated: ${code}`);
@@ -452,7 +452,7 @@ async function startQasimDev() {
             }
         }
 
-        QasimDev.ev.on('connection.update', async (s) => {
+        ChrisDev.ev.on('connection.update', async (s) => {
             const { connection, lastDisconnect, qr } = s;
             
             if (qr) {
@@ -466,7 +466,7 @@ async function startQasimDev() {
             if (connection == "open") {
                 printLog('success', 'Bot connected successfully!');
                 const { startAutoBio } = require('./plugins/setbio');
-                startAutoBio(QasimDev); 
+                startAutoBio(ChrisDev); 
                 const ghostMode = await store.getSetting('global', 'stealthMode');
                 if (ghostMode && ghostMode.enabled) {
                     printLog('info', '👻 STEALTH MODE ACTIVE - Bot is in stealth mode');
@@ -474,13 +474,13 @@ async function startQasimDev() {
                     console.log(chalk.gray('• No typing indicators'));
                 }
                 
-                console.log(chalk.yellow(`🌿Connected to => ` + JSON.stringify(QasimDev.user, null, 2)));
+                console.log(chalk.yellow(`🌿Connected to => ` + JSON.stringify(ChrisDev.user, null, 2)));
 
                 try {
-                    const botNumber = QasimDev.user.id.split(':')[0] + '@s.whatsapp.net';
+                    const botNumber = ChrisDev.user.id.split(':')[0] + '@s.whatsapp.net';
                     const ghostStatus = (ghostMode && ghostMode.enabled) ? '\n👻 Stealth Mode: ACTIVE' : '';
                     
-                    await QasimDev.sendMessage(botNumber, {
+                    await ChrisDev.sendMessage(botNumber, {
                         text: `🤖 Bot Connected Successfully!\n\n⏰ Time: ${new Date().toLocaleString()}\n✅ Status: Online and Ready!${ghostStatus}\n\n✅Make sure to join below channel`,
                         contextInfo: {
                             forwardingScore: 1,
@@ -529,30 +529,30 @@ async function startQasimDev() {
                 if (shouldReconnect) {
                     printLog('connection', 'Reconnecting in 5 seconds...');
                     await delay(5000);
-                    startQasimDev();
+                    startChrisDev();
                 }
             }
         });
 
-        QasimDev.ev.on('call', async (calls) => {
-            await handleCall(QasimDev, calls);
+        ChrisDev.ev.on('call', async (calls) => {
+            await handleCall(ChrisDev, calls);
         });
 
-        QasimDev.ev.on('group-participants.update', async (update) => {
-            await handleGroupParticipantUpdate(QasimDev, update);
+        ChrisDev.ev.on('group-participants.update', async (update) => {
+            await handleGroupParticipantUpdate(ChrisDev, update);
         });
 
-        QasimDev.ev.on('status.update', async (status) => {
-            await handleStatus(QasimDev, status);
+        ChrisDev.ev.on('status.update', async (status) => {
+            await handleStatus(ChrisDev, status);
         });
 
-        QasimDev.ev.on('messages.reaction', async (reaction) => {
-            await handleStatus(QasimDev, reaction);
+        ChrisDev.ev.on('messages.reaction', async (reaction) => {
+            await handleStatus(ChrisDev, reaction);
         });
 
-        return QasimDev;
+        return ChrisDev;
     } catch (error) {
-        printLog('error', `Error in startQasimDev: ${error.message}`);
+        printLog('error', `Error in startChrisDev: ${error.message}`);
         
         if (rl && !rl.closed) {
             rl.close();
@@ -560,7 +560,7 @@ async function startQasimDev() {
         }
         
         await delay(5000);
-        startQasimDev();
+        startChrisDev();
     }
 }
 
@@ -578,7 +578,7 @@ async function main() {
     
     await delay(3000);
     
-    startQasimDev().catch(error => {
+    startChrisDev().catch(error => {
         printLog('error', `Fatal error: ${error.message}`);
         
         if (rl && !rl.closed) {
@@ -591,6 +591,18 @@ async function main() {
 
 main();
 
+const sessionDir = path.join(process.cwd(), 'session');
+
+setInterval(() => {
+  if (!fs.existsSync(sessionDir)) return;
+  fs.readdir(sessionDir, (err, files) => {
+    if (err) return;
+    for (const file of files) {
+      if (file === 'creds.json') continue;
+      fs.unlink(path.join(sessionDir, file), () => {});
+    }
+  });
+}, 3 * 60 * 1000);
 
 const customTemp = path.join(process.cwd(), 'temp');
 if (!fs.existsSync(customTemp)) fs.mkdirSync(customTemp, { recursive: true });
@@ -682,5 +694,4 @@ fs.watchFile(file, () => {
     delete require.cache[file];
     require(file);
 });
-
 
